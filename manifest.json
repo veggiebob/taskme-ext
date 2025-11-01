@@ -1,0 +1,25 @@
+{
+  "manifest_version": 2,
+  "name": "Taskme",
+  "version": "1.0",
+
+  "description": "Create google calendar events and tasks using natural language",
+
+  "homepage_url": "https://github.com/veggiebob/taskme",
+
+  "icons": {
+    "48": "icons/checkmark-48.png",
+    "96": "icons/checkmark-96.png"
+  },
+
+  "permissions": ["activeTab"],
+
+  "browser_action": {
+      "default_icon": "icons/checkmark-32.png",
+      "default_title": "Taskme",
+      "default_popup": "popup/input_task.html"
+  },
+
+  "web_accessible_resources": []
+
+}
