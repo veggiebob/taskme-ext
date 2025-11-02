@@ -25,3 +25,4 @@ Provided the time, I would like to add these extra features:
 - [ ] Add tasks as well as events.
 - [ ] Support multiple calendars.
 - [ ] Update events that already exist.
+- [ ] Reduce permissions scopes required.
