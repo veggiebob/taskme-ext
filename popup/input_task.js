@@ -11,7 +11,7 @@ function authenticate(callback) {
         const redirectURI = browser.identity.getRedirectURL() + 'callback';
         const params = new URLSearchParams({
             client_id: GOOGLE_CLIENT_ID,
-            redirect_uri: redirectURI, // 'http://taskme-site.s3-website.us-east-2.amazonaws.com/callback',
+            redirect_uri: redirectURI,
             response_type: 'token',
             scope: 'https://www.googleapis.com/auth/calendar',
         });
@@ -107,24 +107,70 @@ function createCalendarEvent(calendarId, eventBody, token, callback) {
         });
 }
 
+function getCurrentTimezone() {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
 
 var previewingEvent = false;
 var previewEventData = null;
+var lastPrompt = "";
 
 // --- New: submit form on Enter and handle submission ---
+const loginContainer = document.getElementById('authButtons');
+const authorizeButton = document.getElementById('authorizeButton');
+const signoutButton = document.getElementById('signOutButton');
 const form = document.getElementById('taskForm');
 const input = document.getElementById('task');
 const loadingIndicator = document.getElementById('loadingIndicator');
 const eventPreview = document.getElementById('eventPreview');
+const previewRetryButton = document.getElementById('retryButton');
 eventPreview.classList.add('hidden');
 
 const testButton = document.getElementById('testButton');
 const confirmEventButton = document.getElementById('confirmEventButton');
-const cancelEventButton = document.getElementById('cancelEventButton');
 
+function showLogin() {
+    form.classList.add('hidden');
+    loginContainer.classList.remove('hidden');
+    eventPreview.classList.add('hidden');
+}
 
-function requireLogin() {
+function showForm() {
+    loginContainer.classList.add('hidden');
+    form.classList.remove('hidden');
+    eventPreview.classList.add('hidden');
+}
 
+function showPreview() {
+    loginContainer.classList.add('hidden');
+    form.classList.add('hidden');
+    eventPreview.classList.remove('hidden');
+}
+
+if (localStorage.getItem(TOKEN_LOCAL_STORAGE_KEY)) {
+    showForm();
+} else {
+    showLogin();
+}
+
+if (input) {
+    input.focus();
+}
+
+if (authorizeButton) {
+    authorizeButton.addEventListener('click', () => {
+        authenticate(token => {
+            showForm();
+        });
+    });
+}
+
+if (signoutButton) {
+    signoutButton.addEventListener('click', () => {
+        localStorage.removeItem(TOKEN_LOCAL_STORAGE_KEY);
+        showLogin();
+    });
 }
 
 if (testButton) {
@@ -151,7 +197,16 @@ if (confirmEventButton) {
                     console.error("No calendar ID found.");
                 }
             });
-        })
+        });
+    });
+}
+
+if (previewRetryButton) {
+    previewRetryButton.addEventListener('click', () => {
+        showForm();
+        input.value = lastPrompt;
+        previewingEvent = false;
+        previewEventData = null;
     });
 }
 
@@ -160,11 +215,9 @@ if (form) {
         e.preventDefault();
         const value = input && input.value ? input.value.trim() : '';
         if (!value) return; // don't submit empty tasks
-
+        lastPrompt = value;
         console.log('Submitting task:', value);
-
         loadingIndicator.classList.remove('hidden');
-
         reauthenticate(token => {
             // guess the calendar event details from the input value
             fetch('https://api.veggiebob.com/taskme/guess-cal-event', {
@@ -172,7 +225,7 @@ if (form) {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({input: value}),
+                body: JSON.stringify({input: value + '; Timezone is ' + getCurrentTimezone()}),
             }).then(response => response.json()).then(data => {
                 loadingIndicator.classList.add('hidden');
                 // create the calendar event
@@ -193,10 +246,8 @@ if (form) {
                 const eventPreview = document.getElementById('eventPreview');
                 eventPreview.classList.remove('hidden');
                 // hide the form
-                form.classList.add('hidden');
-
+                showPreview();
                 previewingEvent = true;
-
                 previewEventData = body;
             }).catch(error => {
                 console.error("Error guessing event data:", error);

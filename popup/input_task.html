@@ -7,27 +7,27 @@
 </head>
 
 <body>
-<div>
-    <button id="testButton">Test button</button>
+<div class="popup-container">
     <div id="authButtons">
         <button id="authorizeButton">Authorize</button>
-        <button id="signOutButton">Sign Out</button>
     </div>
     <form id="taskForm">
         <label for="task" style="position:absolute;left:-9999px;top:auto;">Task description</label>
         <input type="text" id="task" name="task" placeholder="Enter event or task description" autocomplete="off"/>
-        <button id="addTaskButton" type="submit">Add Task</button>
+        <button id="addTaskButton" type="submit">✓</button>
     </form>
-    <div id="loadingIndicator" class="hidden">Adding task...</div>
+    <div id="loadingIndicator" class="hidden">Generating event...</div>
     <div id="eventPreview">
         <h3 id="EventSummary">Example Summary</h3>
         <p id="EventStart">event start</p>
         <p id="EventEnd">event end</p>
         <p id="EventDescription">event description</p>
         <p id="EventLocation">event location</p>
-        <button id="confirmEventButton">This ok?</button>
+        <button id="confirmEventButton">Create</button>
         <button id="retryButton">Retry</button>
     </div>
+
+    <button id="signOutButton">Sign Out</button>
 </div>
 <script src="input_task.js"></script>
 
