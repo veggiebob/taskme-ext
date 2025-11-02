@@ -13,13 +13,14 @@ Lightest: #F2E9E4
 :root {
     /* Base palette from the comment */
     --lav-darkest: #22223B;
+    --lav-darkest2: #222222;
     --lav-medium-dark: #4A4E69;
     --lav-middle: #9A8C98;
     --lav-medium-light: #C9ADA7;
     --lav-lightest: #F2E9E4;
 
     /* Semantic aliases (dark theme) */
-    --color-bg: var(--lav-darkest);
+    --color-bg: var(--lav-darkest2);
     --color-surface: var(--lav-medium-dark);
     --color-text: var(--lav-lightest);
     --color-muted: var(--lav-middle);
@@ -30,18 +31,23 @@ Lightest: #F2E9E4
 }
 
 html, body {
-    width: 100%;
+    width: 600px;
     background-color: var(--color-bg);
     color: var(--color-text);
+    scrollbar-width: none; /* Firefox */
+}
 
+body::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
 }
 
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 input {
     background-color: transparent; /* flat, integrates with page background */
+    width: 80%;
     color: var(--color-text);
     border: none;
     border-bottom: 2px solid rgba(255,255,255,0.06); /* subtle baseline divider */
@@ -94,4 +100,44 @@ button:active {
 
 #addTaskButton {
     border-radius: 999px;
+}
+
+/* Muted, smaller sign out button */
+#signOutButton {
+    background: transparent; /* keep it low-contrast */
+    color: var(--color-muted);
+    font-size: 13px; /* smaller than primary actions */
+    font-weight: 500; /* slightly lighter than primary buttons */
+    padding: 6px 8px; /* compact touch/click target */
+    border-radius: 6px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    opacity: 0.85;
+    transition: background-color 0.18s ease, color 0.18s ease, transform 0.08s ease, opacity 0.18s ease;
+}
+
+#signOutButton:hover {
+    background-color: rgba(255,255,255,0.02); /* subtle hover to indicate interactivity */
+    opacity: 1;
+}
+
+#signOutButton:active {
+    transform: translateY(1px);
+}
+
+/* this should be green */
+#successBanner {
+    background-color: #4BB543;
+    color: white;
+    border-radius: 9999px;
+    text-align: center;
+    /* center horizontally and keep a tidy width */
+    display: inline-block;
+    padding: 8px 16px;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 90%;
+    box-sizing: border-box;
+    margin: 8px 0;
 }

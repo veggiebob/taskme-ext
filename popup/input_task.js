@@ -16,8 +16,6 @@ function authenticate(callback) {
             scope: 'https://www.googleapis.com/auth/calendar',
         });
         let url = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-        console.log(url);
-        console.log(browser.identity.getRedirectURL());
 
         browser.identity.launchWebAuthFlow({
             interactive: true,
@@ -57,19 +55,16 @@ function reauthenticate(callback) {
 }
 
 function getUserCalendars(token, callback) {
-    console.log("Fetching user calendars with token:", token);
     fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${token}`,
         },
     }).then(response => response.json()).then(data => {
-        console.log("User calendars:", data);
         if (data.error) {
             console.log(data);
             console.error(data.error);
         }
-        console.log(JSON.stringify(data, null, 2));
         if (callback) callback(data);
     }).catch(error => {
         console.error("Error fetching user calendars:", error);
@@ -99,12 +94,10 @@ function createCalendarEvent(calendarId, eventBody, token, callback) {
         },
         body: JSON.stringify(eventBody),
     }).then(response => response.json()).then(data => {
-        console.log("Created calendar event:", data);
         if (callback) callback(data);
-    })
-        .catch(error => {
-            console.error("Error creating calendar event:", error);
-        });
+    }).catch(error => {
+        console.error("Error creating calendar event:", error);
+    });
 }
 
 function getCurrentTimezone() {
@@ -125,10 +118,13 @@ const input = document.getElementById('task');
 const loadingIndicator = document.getElementById('loadingIndicator');
 const eventPreview = document.getElementById('eventPreview');
 const previewRetryButton = document.getElementById('retryButton');
-eventPreview.classList.add('hidden');
-
+const submitButton = document.getElementById('addTaskButton');
+const successBanner = document.getElementById('successBanner');
 const testButton = document.getElementById('testButton');
 const confirmEventButton = document.getElementById('confirmEventButton');
+
+eventPreview.classList.add('hidden');
+successBanner.classList.add('hidden');
 
 function showLogin() {
     form.classList.add('hidden');
@@ -140,12 +136,14 @@ function showForm() {
     loginContainer.classList.add('hidden');
     form.classList.remove('hidden');
     eventPreview.classList.add('hidden');
+    submitButton.classList.remove('hidden');
 }
 
 function showPreview() {
     loginContainer.classList.add('hidden');
     form.classList.add('hidden');
     eventPreview.classList.remove('hidden');
+    successBanner.classList.add('hidden');
 }
 
 if (localStorage.getItem(TOKEN_LOCAL_STORAGE_KEY)) {
@@ -192,6 +190,13 @@ if (confirmEventButton) {
                 if (calendarId) {
                     createCalendarEvent(calendarId, fullEventData, token, (createdEvent) => {
                         console.log("Event created successfully:", createdEvent);
+                        successBanner.classList.remove('hidden');
+                        previewingEvent = false;
+                        previewEventData = null;
+                        // reset the form
+                        showForm();
+                        input.value = '';
+                        input.focus();
                     });
                 } else {
                     console.error("No calendar ID found.");
@@ -216,8 +221,9 @@ if (form) {
         const value = input && input.value ? input.value.trim() : '';
         if (!value) return; // don't submit empty tasks
         lastPrompt = value;
-        console.log('Submitting task:', value);
         loadingIndicator.classList.remove('hidden');
+        submitButton.classList.add('hidden');
+        successBanner.classList.add('hidden');
         reauthenticate(token => {
             // guess the calendar event details from the input value
             fetch('https://api.veggiebob.com/taskme/guess-cal-event', {
@@ -233,7 +239,7 @@ if (form) {
                 const eventSummary = body.summary;
                 const eventDescription = body.description;
                 const eventLocation = body.location;
-                const allDayEvent = body.start.date ? true : false;
+                const allDayEvent = !!body.start.date;
                 const eventStart = allDayEvent ? body.start.date : body.start.dateTime;
                 const eventEnd = allDayEvent ? body.end.date : body.end.dateTime;
                 // set the content
@@ -241,12 +247,13 @@ if (form) {
                 document.getElementById('EventStart').textContent = eventStart || '';
                 document.getElementById('EventEnd').textContent = eventEnd || '';
                 document.getElementById('EventDescription').textContent = eventDescription || '';
-                document.getElementById('EventLocation').textContent = eventLocation || '';
+                document.getElementById('EventLocation').textContent = eventLocation ? 'Located at ' + eventLocation : '';
                 // show the preview
                 const eventPreview = document.getElementById('eventPreview');
                 eventPreview.classList.remove('hidden');
                 // hide the form
                 showPreview();
+                confirmEventButton.focus();
                 previewingEvent = true;
                 previewEventData = body;
             }).catch(error => {

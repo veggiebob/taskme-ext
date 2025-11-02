@@ -13,14 +13,14 @@
     </div>
     <form id="taskForm">
         <label for="task" style="position:absolute;left:-9999px;top:auto;">Task description</label>
-        <input type="text" id="task" name="task" placeholder="Enter event or task description" autocomplete="off"/>
+        <input type="text" id="task" name="task" placeholder="event description..." autocomplete="off"/>
         <button id="addTaskButton" type="submit">✓</button>
     </form>
     <div id="loadingIndicator" class="hidden">Generating event...</div>
     <div id="eventPreview">
         <h3 id="EventSummary">Example Summary</h3>
-        <p id="EventStart">event start</p>
-        <p id="EventEnd">event end</p>
+        <div>Start at &nbsp;<p id="EventStart">event start</p></div>
+        <div>End at &nbsp; <p id="EventEnd">event end</p></div>
         <p id="EventDescription">event description</p>
         <p id="EventLocation">event location</p>
         <button id="confirmEventButton">Create</button>
@@ -28,6 +28,10 @@
     </div>
 
     <button id="signOutButton">Sign Out</button>
+
+    <div id="successBanner">
+        Created ✓
+    </div>
 </div>
 <script src="input_task.js"></script>
 
