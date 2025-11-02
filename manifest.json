@@ -8,18 +8,23 @@
   "homepage_url": "https://github.com/veggiebob/taskme",
 
   "icons": {
-    "48": "icons/checkmark-48.png",
-    "96": "icons/checkmark-96.png"
+    "48": "icons/checkmark-48.jpg",
+    "96": "icons/checkmark-96.jpg"
   },
 
-  "permissions": ["activeTab"],
+  "permissions": ["activeTab", "identity"],
 
   "browser_action": {
-      "default_icon": "icons/checkmark-32.png",
+      "default_icon": "icons/checkmark-32.jpg",
       "default_title": "Taskme",
       "default_popup": "popup/input_task.html"
   },
 
-  "web_accessible_resources": []
+  "web_accessible_resources": [],
 
+  "browser_specific_settings": {
+      "gecko": {
+          "id": "taskme@veggiebob.com"
+      }
+  }
 }

@@ -1,21 +1,211 @@
 // help:
 // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Your_second_WebExtension
 
-function listenForClicks() {
-    document.addEventListener('click', function (e) {
-        console.log('clicked');
-        browser.tabs.sendMessage(tabs[0].id, {
-            command: "my_command_1"
+const GOOGLE_CLIENT_ID = "675648381105-22qg8c45pnvsei81qep64k8tf5rbjba9.apps.googleusercontent.com";
+const TOKEN_LOCAL_STORAGE_KEY = "taskme_google_calendar_access_token";
+
+function authenticate(callback) {
+    if (localStorage.getItem(TOKEN_LOCAL_STORAGE_KEY)) {
+        if (callback) callback(localStorage.getItem(TOKEN_LOCAL_STORAGE_KEY));
+    } else {
+        const redirectURI = browser.identity.getRedirectURL() + 'callback';
+        const params = new URLSearchParams({
+            client_id: GOOGLE_CLIENT_ID,
+            redirect_uri: redirectURI, // 'http://taskme-site.s3-website.us-east-2.amazonaws.com/callback',
+            response_type: 'token',
+            scope: 'https://www.googleapis.com/auth/calendar',
+        });
+        let url = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+        console.log(url);
+        console.log(browser.identity.getRedirectURL());
+
+        browser.identity.launchWebAuthFlow({
+            interactive: true,
+            url: url
+        }).then((redirectURL) => {
+            // get the access token
+            let params = new URLSearchParams((new URL(redirectURL)).hash.substring(1));
+            let token = params.get('access_token');
+            localStorage.setItem(TOKEN_LOCAL_STORAGE_KEY, token);
+            if (callback) callback(token);
+        }).catch((error) => {
+            console.error("Authentication failed:", error);
+        });
+    }
+}
+
+function buildCalendarEvent(body) {
+    return {
+        "kind": "calendar#event",
+        "htmlLink": body.htmlLink || "",
+        "summary": body.summary || "",
+        "description": body.description,
+        "location": body.location,
+        "start": body.start,
+        "end": body.end,
+        "eventType": "default",
+        "source": {
+            url: 'http://waterbuffalocoffeemilkjello.tech',
+            title: 'TaskMe Extension'
+        }
+    };
+}
+
+function reauthenticate(callback) {
+    localStorage.removeItem(TOKEN_LOCAL_STORAGE_KEY);
+    authenticate(callback);
+}
+
+function getUserCalendars(token, callback) {
+    console.log("Fetching user calendars with token:", token);
+    fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+        },
+    }).then(response => response.json()).then(data => {
+        console.log("User calendars:", data);
+        if (data.error) {
+            console.log(data);
+            console.error(data.error);
+        }
+        console.log(JSON.stringify(data, null, 2));
+        if (callback) callback(data);
+    }).catch(error => {
+        console.error("Error fetching user calendars:", error);
+    });
+}
+
+function getPrimaryCalendarId(calendarList) {
+    for (let item of calendarList.items) {
+        if (item.primary) {
+            return item.id;
+        }
+    }
+    if (calendarList.items.length > 0) {
+        return calendarList.items[0].id;
+    }
+    console.error("No calendars found for user.");
+    return null;
+}
+
+function createCalendarEvent(calendarId, eventBody, token, callback) {
+    // https://www.googleapis.com/calendar/v3/calendars/calendarId/events
+    fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(eventBody),
+    }).then(response => response.json()).then(data => {
+        console.log("Created calendar event:", data);
+        if (callback) callback(data);
+    })
+        .catch(error => {
+            console.error("Error creating calendar event:", error);
+        });
+}
+
+
+var previewingEvent = false;
+var previewEventData = null;
+
+// --- New: submit form on Enter and handle submission ---
+const form = document.getElementById('taskForm');
+const input = document.getElementById('task');
+const loadingIndicator = document.getElementById('loadingIndicator');
+const eventPreview = document.getElementById('eventPreview');
+eventPreview.classList.add('hidden');
+
+const testButton = document.getElementById('testButton');
+const confirmEventButton = document.getElementById('confirmEventButton');
+const cancelEventButton = document.getElementById('cancelEventButton');
+
+
+function requireLogin() {
+
+}
+
+if (testButton) {
+    testButton.addEventListener('click', () => {
+        authenticate(token => {
+            getUserCalendars(token, (calList) => {
+            });
+        });
+    });
+}
+
+if (confirmEventButton) {
+    confirmEventButton.addEventListener('click', () => {
+        if (!previewingEvent) return;
+        var fullEventData = buildCalendarEvent(previewEventData);
+        authenticate(token => {
+            getUserCalendars(token, (calList) => {
+                const calendarId = getPrimaryCalendarId(calList);
+                if (calendarId) {
+                    createCalendarEvent(calendarId, fullEventData, token, (createdEvent) => {
+                        console.log("Event created successfully:", createdEvent);
+                    });
+                } else {
+                    console.error("No calendar ID found.");
+                }
+            });
         })
     });
 }
 
-function reportExecuteScriptError(error) {
-    console.error(`Failed to execute input_task script: ${error.message}`);
-}
+if (form) {
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const value = input && input.value ? input.value.trim() : '';
+        if (!value) return; // don't submit empty tasks
 
-browser.tabs.executeScript({
-    file: '/content_scripts/taskme.js'
-})
-    .then(listenForClicks)
-    .catch(reportExecuteScriptError);
+        console.log('Submitting task:', value);
+
+        loadingIndicator.classList.remove('hidden');
+
+        reauthenticate(token => {
+            // guess the calendar event details from the input value
+            fetch('https://api.veggiebob.com/taskme/guess-cal-event', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({input: value}),
+            }).then(response => response.json()).then(data => {
+                loadingIndicator.classList.add('hidden');
+                // create the calendar event
+                const body = data.body;
+                const eventSummary = body.summary;
+                const eventDescription = body.description;
+                const eventLocation = body.location;
+                const allDayEvent = body.start.date ? true : false;
+                const eventStart = allDayEvent ? body.start.date : body.start.dateTime;
+                const eventEnd = allDayEvent ? body.end.date : body.end.dateTime;
+                // set the content
+                document.getElementById('EventSummary').textContent = eventSummary || '';
+                document.getElementById('EventStart').textContent = eventStart || '';
+                document.getElementById('EventEnd').textContent = eventEnd || '';
+                document.getElementById('EventDescription').textContent = eventDescription || '';
+                document.getElementById('EventLocation').textContent = eventLocation || '';
+                // show the preview
+                const eventPreview = document.getElementById('eventPreview');
+                eventPreview.classList.remove('hidden');
+                // hide the form
+                form.classList.add('hidden');
+
+                previewingEvent = true;
+
+                previewEventData = body;
+            }).catch(error => {
+                console.error("Error guessing event data:", error);
+            });
+        });
+    });
+
+    // Optional: allow pressing Escape to close the popup
+    input && input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') window.close();
+    });
+}
